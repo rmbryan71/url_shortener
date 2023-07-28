@@ -58,8 +58,12 @@ def forward_to_target_url(
         request: Request,
         db: Session = Depends(get_db)
     ):
-    if db_url := crud.get_db_url_by_key(db=db, url_key=url_key):
-        crud.update_db_clicks(db=db, db_url=db_url)
+    db_url = (
+        db.query(models.URL)
+        .filter(models.URL.key == url_key, models.URL.is_active)
+        .first()
+    )
+    if db_url:
         return RedirectResponse(db_url.target_url)
     else:
         raise_not_found(request)
@@ -72,10 +76,13 @@ def get_url_info(
     secret_key: str, 
     request: Request, 
     db: Session = Depends(get_db)):
-
-    if db_url := crud.get_db_url_by_secret_key(db,
-        secret_key=secret_key):
-        return get_admin_info(db_url)
+    db_url = (
+        db.query(models.URL)
+        .filter(models.URL.secret_key == secret_key, models.URL.is_active)
+        .first()
+    )
+    if db_url:
+        return RedirectResponse(db_url.target_url)
     else:
         raise_not_found(request)
 
@@ -84,13 +91,13 @@ def delete_url(
     secret_key: str, 
     request: Request, 
     db: Session = Depends(get_db)):
-
-    if db_url := crud.deactivate_db_url_by_secret_key(
-        db,
-        secret_key=secret_key):
-        message = (
-            f"Successfully deleted shortened URL for "
-            f"'{db_url.target_url}'")
-        return {"detail": message}
+    db_url = (
+        db.query(models.URL)
+        .filter(models.URL.secret_key == secret_key, models.URL.is_active)
+        .first()
+    )
+    if db_url:
+        return RedirectResponse(db_url.target_url)
     else:
         raise_not_found(request)
+
